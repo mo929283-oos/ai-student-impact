@@ -3,13 +3,15 @@ import pandas as pd
 import numpy as np
 import joblib
 
-# ضبط إعدادات الصفحة
+# ضبط إعدادات الصفحة لتكون عريضة ومريحة للعين
 st.set_page_config(page_title="AI مستشار الطالب الذكي", layout="wide")
 
+# تصميم واجهة التطبيق بالعربي
 st.markdown("<h1 style='text-align: center; color: #4CAF50;'>🎓 مستشار الطالب الذكي وأداء الذكاء الاصطناعي</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center;'>أدخل بياناتك الدراسية وسلوك استخدامك للذكاء الاصطناعي لنتوقع أداءك الدراسي ونقدم لك نصائح مخصصة</p>", unsafe_allow_html=True)
 st.write("---")
 
+# تحميل الموديلات والـ Encoders المحفوظة
 @st.cache_resource
 def load_resources():
     try:
@@ -23,90 +25,125 @@ def load_resources():
 gpa_model, burnout_model, encoders = load_resources()
 
 if gpa_model is None:
-    st.error("⚠️ يرجى التأكد من وجود ملفات الموديلات في المستودع")
+    st.error("⚠️ يرجى التأكد من وجود ملفات الموديلات في المستودع بنفس الأسماء")
 else:
+    # تقسيم الشاشة إلى جزئين: المدخلات والنتائج
     col1, col2 = st.columns([1, 1])
     
     with col1:
         st.subheader("📝 المدخلات الدراسية والسلوكية")
         
-        gender = st.selectbox("الجنس", ["Male", "Female"])
-        major = st.selectbox("التخصص الدراسي", ["Engineering", "Computer Science", "Business", "Arts", "Sciences"])
-        year = st.selectbox("السنة الدراسية", ["Freshman", "Sophomore", "Junior", "Senior"])
+        # المدخلات الأساسية المتوافقة مع الـ Dataset
+        major_category = st.selectbox("التخصص الدراسي (Major Category)", ["STEM", "Medical", "Business", "Humanities", "Social Sciences"])
+        year_of_study = st.selectbox("السنة الدراسية (Year of Study)", ["Freshman", "Sophomore", "Junior", "Senior"])
+        pre_gpa = st.slider("المعدل الدراسي السابق (Pre-Semester GPA)", 0.0, 4.0, 3.0, step=0.01)
         
-        stud_hours = st.slider("ساعات المذاكرة التقليدية أسبوعياً", 1, 40, 15)
-        ai_hours = st.slider("ساعات استخدام أدوات الذكاء الاصطناعي أسبوعياً", 0, 30, 5)
-        attendance = st.slider("نسبة الحضور (%)", 50, 100, 85)
-        sleep_hours = st.slider("معدل ساعات النوم اليومية", 4, 10, 7)
-        stress_level = st.slider("مستوى التوتر الدراسي (1-10)", 1, 10, 5)
+        st.write("**📊 سلوك استخدام الذكاء الاصطناعي:**")
+        weekly_genai_hours = st.slider("ساعات استخدام الـ GenAI أسبوعياً", 0.0, 40.0, 10.0, step=0.5)
+        primary_use_case = st.selectbox("الاستخدام الأساسي للـ AI", ["Code Generation", "Explanation/Tutoring", "Summarization", "Ideation", "Copywriting/Drafting"])
+        prompt_skill = st.selectbox("مستواك في الـ Prompt Engineering", ["Beginner", "Intermediate", "Advanced"])
+        tool_diversity = st.slider("عدد أدوات الـ AI المختلفة التي تستخدمها", 1, 10, 3)
+        paid_sub = st.checkbox("هل مشترك في نسخة مدفوعة؟ (ChatGPT Plus, Claude Pro, etc.)", value=False)
+        ai_dependency = st.slider("مدى اعتمادك على الـ AI من (1-5)", 1, 5, 3)
+        
+        st.write("**📚 العادات الدراسية والحالة النفسية:**")
+        trad_study_hours = st.slider("ساعات المذاكرة التقليدية أسبوعياً (بدون AI)", 0.0, 40.0, 15.0, step=0.5)
+        anxiety_level = st.slider("مستوى القلق والتوتر أثناء الامتحانات (1-10)", 1, 10, 5)
+        skill_retention = st.slider("مستوى استرجاعك للمعلومات بدون AI (من 0 لـ 100)", 0.0, 100.0, 75.0, step=1.0)
+        policy = st.selectbox("سياسة الجامعة تجاه الـ AI", ["Allowed_With_Citation", "Unregulated", "Restricted", "Banned"])
 
     with col2:
         st.subheader("🔮 التوقعات والتحليلات الذكية")
         
-        # عمل الـ DataFrame بنفس ترتيب الـ Features الأصلي تماماً
-        input_data = pd.DataFrame([{
-            'Gender': gender,
-            'Major': major,
-            'Year_of_Study': year,
-            'Study_Hours_Per_Week': stud_hours,
-            'AI_Usage_Hours_Per_Week': ai_hours,
-            'Attendance_Percentage': attendance,
-            'Sleep_Hours_Per_Day': sleep_hours,
-            'Stress_Level': stress_level
-        }])
+        # تجهيز الـ 16 عمود بالظبط بنفس ترتيب الـ Dataset الأصلي
+        input_dict = {
+            'Student_ID': 999999, # قيمة افتراضية للـ ID
+            'Major_Category': major_category,
+            'Year_of_Study': year_of_study,
+            'Pre_Semester_GPA': pre_gpa,
+            'Weekly_GenAI_Hours': weekly_genai_hours,
+            'Primary_Use_Case': primary_use_case,
+            'Prompt_Engineering_Skill': prompt_skill,
+            'Tool_Diversity': tool_diversity,
+            'Paid_Subscription': paid_sub,
+            'Traditional_Study_Hours': trad_study_hours,
+            'Perceived_AI_Dependency': ai_dependency,
+            'Institutional_Policy': policy,
+            'Anxiety_Level_During_Exams': anxiety_level,
+            'Post_Semester_GPA': 0.0, # قيمة مبدئية سيتم توقعها أو تجاهلها في الـ features
+            'Skill_Retention_Score': skill_retention,
+            'Burnout_Risk_Level': 0 # قيمة مبدئية
+        }
         
-        # تحويل النصوص لأرقام
-        for col in ['Gender', 'Major', 'Year_of_Study']:
+        input_data = pd.DataFrame([input_dict])
+        
+        # قائمة الأعمدة النصية التي تحتاج Label Encoding كما هي متواجدة في الداتا
+        categorical_cols = ['Major_Category', 'Year_of_Study', 'Primary_Use_Case', 'Prompt_Engineering_Skill', 'Institutional_Policy']
+        
+        # تطبيق الـ Encoder بحرص
+        for col in categorical_cols:
             if col in encoders:
                 le = encoders[col]
+                # لو المدخل مش موجود في الـ encoder بنحط 0 كحماية من الـ Errors
                 input_data[col] = input_data[col].map(lambda s: le.transform([s])[0] if s in le.classes_ else 0)
         
+        # ترتيب الأعمدة بالظبط كما تدرب الموديل
+        features_order = [
+            'Student_ID', 'Major_Category', 'Year_of_Study', 'Pre_Semester_GPA', 
+            'Weekly_GenAI_Hours', 'Primary_Use_Case', 'Prompt_Engineering_Skill', 
+            'Tool_Diversity', 'Paid_Subscription', 'Traditional_Study_Hours', 
+            'Perceived_AI_Dependency', 'Institutional_Policy', 'Anxiety_Level_During_Exams',
+            'Skill_Retention_Score'
+        ]
+        
+        final_features = input_data[features_order].values
+        
+        # زر التوقع
         if st.button("احسب التوقعات والنصائح الاستشارية", type="primary"):
-            # 🔥 الحل هنا: نمرر القيم كـ numpy array بدون الأسماء لتجنب تصفير الداتا
-            features_array = input_data.values
-            
-            pred_gpa = gpa_model.predict(features_array)[0]
-            pred_gpa = max(0.0, min(4.0, pred_gpa))
-            
-            pred_burnout = burnout_model.predict(features_array)[0]
-            
-            st.markdown(f"### 📈 المعدل التراكمي المتوقع (Predicted GPA): `{pred_gpa:.2f} / 4.0`")
-            
-            if pred_burnout == 1 or pred_burnout == 'Yes':
-                st.error("🚨 تحذير: المؤشرات تدل على أنك معرض للاحتراق النفسي (High Burnout Risk)!")
-                has_burnout = True
-            else:
-                st.success("✅ ممتاز: حالتك النفسية والدراسية متزنة حالياً (Low Burnout Risk).")
-                has_burnout = False
+            try:
+                # 1. توقع الـ GPA المستقبلي
+                pred_gpa = gpa_model.predict(final_features)[0]
+                pred_gpa = max(0.0, min(4.0, pred_gpa))
                 
-            st.write("---")
-            st.subheader("🎯 الخطة الاستشارية المقترحة لك (AI Recommendation)")
-            
-            if pred_gpa < 3.0:
-                st.warning(f"⚠️ **لرفع معدلك التراكمي من {pred_gpa:.2f} إلى +3.5:**")
-                st.write(f"• نقترح زيادة ساعات المذاكرة التقليدية من **{stud_hours}** ساعة إلى **{stud_hours + 5}** ساعات أسبوعياً.")
-            else:
-                st.info("🌟 **للحفاظ على تفوقك الدراسي:**")
-                st.write("• استمر على هذا المعدل المتميز من الحضور والمذاكرة.")
-
-            if has_burnout or stress_level > 7 or sleep_hours < 6:
-                st.markdown("#### 🧘 روتين مقترح لتقليل التوتر الحاد:")
-                st.write(f"• جدولك الجديد يلزمك بزيادة النوم إلى **7 ساعات ونصف** فوراً.")
-
-            st.write("---")
-            st.subheader("📅 الـ Habit Tracker اليومي المتكامل (حالة تجريبية)")
-            
-            col_t1, col_t2, col_t3 = st.columns(3)
-            with col_t1:
-                st.checkbox("أتممت ساعات المذاكرة المقترحة لليوم 📚", value=True)
-            with col_t2:
-                st.checkbox("نمت أكثر من 7 ساعات الليلة الماضية 😴")
-            with col_t3:
-                st.checkbox("قللت الاعتماد على الـ AI واعتمدت على نفسي 🧠", value=True)
+                # 2. توقع الـ Burnout
+                pred_burnout = burnout_model.predict(final_features)[0]
                 
-            st.markdown("""
-            | اليوم | تحدي المذاكرة (ساعات) | نقاط الصحة النفسية | ترتيبك في الـ Community |
-            | :--- | :---: | :---: | :---: |
-            | **السبت** | 3 / 3 ✅ | 85% | الـ 5 على الدفعة 🏆 |
-            | **الأحد** | 2 / 3 ⏳ | 60% | الـ 12 على الدفعة |
+                # عرض النتيجة
+                st.markdown(f"### 📈 المعدل التراكمي المتوقع (Predicted Post-GPA): `{pred_gpa:.2f} / 4.0`")
+                
+                if pred_burnout in [1, 'High', 'Yes']:
+                    st.error("🚨 تحذير: مؤشراتك تدل على احتمالية عالية للاحتراق النفسي (High Burnout Risk)!")
+                    has_burnout = True
+                else:
+                    st.success("✅ ممتاز: مؤشراتك تدل على استقرار نفسي ودراسي (Low Burnout Risk).")
+                    has_burnout = False
+                
+                # توصيات ذكية بناء على المدخلات الحقيقية
+                st.write("---")
+                st.subheader("🎯 الخطة الاستشارية المقترحة لك (AI Recommendation)")
+                
+                if weekly_genai_hours > trad_study_hours:
+                    st.warning("⚠️ **تنبيه حول الاعتمادية:** ساعات استخدامك للذكاء الاصطناعي أكبر من ساعات مذاكرتك التقليدية. هذا قد يضعف مهارة استرجاع المعلومات لديك في الامتحانات الورقية.")
+                
+                if anxiety_level > 7:
+                    st.info("🧘 **نصيحة لتقليل قلق الامتحانات:** جرب استخدام الـ AI لعمل امتحانات تجريبية لنفسك (Mock Exams) وتقييم إجاباتك لتقليل رهبة الامتحان العام.")
+                else:
+                    st.success("🌟 استمر في الحفاظ على هذا التوازن الجيد بين المذاكرة الذكية والتقليدية.")
+                    
+            except Exception as e:
+                st.error(f"حدث خطأ أثناء الحساب: {e}")
+                st.info("تأكد أن الموديل تم تدريبه على الـ 14 Feature الأساسية في الداتا.")
+
+            # الجدول التفاعلي (الترتيب في الـ Community)
+            st.write("---")
+            st.subheader("📅 لوحة المتصدرين والـ Habit Tracker (Community Leaderboard)")
+            st.write("هنا يتم ترتيب الطلاب في مجتمع المادة بناءً على نقاط الالتزام اليومي لتقليل الـ Burnout وزيادة التحصيل:")
+            
+            st.markdown(f"""
+            | الترتيب | اسم الطالب | التخصص | معدل الالتزام بالأهداف الدراسي | حالة الأداء المتوقع |
+            | :---: | :--- | :---: | :---: | :---: |
+            | 🥇 **الأول** | أحمد محمد | STEM | 98% | ممتاز 🔥 |
+            | 🥈 **الثاني** | سارة أحمد | Medical | 94% | ممتاز 🔥 |
+            | 🥉 **الثالث** | **أنت (طالب مستفسر)** | **{major_category}** | **88%** | **متزن وجيد** ⚡ |
+            | 4 | يوسف عمر | Business | 82% | يحتاج تركيز |
             """)
