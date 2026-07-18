@@ -18,15 +18,14 @@ def load_resources():
         gpa_model = joblib.load('gpa_predictor_model.joblib')
         burnout_model = joblib.load('burnout_classifier_model.joblib')
         encoders = joblib.load('label_encoders.joblib')
-        feature_cols = joblib.load('feature_columns.joblib') # تحميل ترتيب الأعمدة الأصلي
-        return gpa_model, burnout_model, encoders, feature_cols
+        return gpa_model, burnout_model, encoders
     except:
-        return None, None, None, None
+        return None, None, None
 
-gpa_model, burnout_model, encoders, feature_cols = load_resources()
+gpa_model, burnout_model, encoders = load_resources()
 
 if gpa_model is None:
-    st.error("⚠️ أولاً لإنشاء الموديلات المحفوظة يرجى تشغيل ملف train_models.py")
+    st.error("⚠️ يرجى التأكد من وجود ملفات الموديلات في المستودع")
 else:
     # تقسيم الشاشة إلى جزئين: المدخلات والنتائج
     col1, col2 = st.columns([1, 1])
@@ -67,10 +66,14 @@ else:
                 le = encoders[col]
                 input_data[col] = input_data[col].map(lambda s: le.transform([s])[0] if s in le.classes_ else 0)
         
-        # 🎯 خطوة الإصلاح السحرية: إعادة ترتيب الأعمدة لتطابق الموديل بالظبط
-        if feature_cols is not None:
-            # إعادة ترتيب وتصفية الأعمدة بناءً على الملف المحفوظ
-            input_data = input_data[feature_cols]
+        # 🎯 الحل السحري: إجبار الأعمدة على أخذ نفس ترتيب الموديل بالظبط لتفادي أي KeyError
+        try:
+            model_features = gpa_model.feature_names_in_
+            # لو الموديل متخزن جواه أسماء الأعمدة، هنخلي الـ dataframe يترتب زيه بالظبط
+            input_data = input_data.reindex(columns=model_features, fill_value=0)
+        except AttributeError:
+            # لو الموديل مش متخزن جواه الأسماء، هيمشي بالترتيب الافتراضي للموديل
+            pass
             
         # زر الحساب والتوقع
         if st.button("احسب التوقعات والنصائح الاستشارية", type="primary"):
