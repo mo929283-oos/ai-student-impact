@@ -18,11 +18,12 @@ def load_resources():
         gpa_model = joblib.load('gpa_predictor_model.joblib')
         burnout_model = joblib.load('burnout_classifier_model.joblib')
         encoders = joblib.load('label_encoders.joblib')
-        return gpa_model, burnout_model, encoders
+        feature_cols = joblib.load('feature_columns.joblib') # تحميل ترتيب الأعمدة الأصلي
+        return gpa_model, burnout_model, encoders, feature_cols
     except:
-        return None, None, None
+        return None, None, None, None
 
-gpa_model, burnout_model, encoders = load_resources()
+gpa_model, burnout_model, encoders, feature_cols = load_resources()
 
 if gpa_model is None:
     st.error("⚠️ أولاً لإنشاء الموديلات المحفوظة يرجى تشغيل ملف train_models.py")
@@ -48,7 +49,7 @@ else:
     with col2:
         st.subheader("🔮 التوقعات والتحليلات الذكية")
         
-        # تجهيز البيانات للموديل بنفس الترتيب وأسماء الأعمدة الافتراضية
+        # تجهيز البيانات للموديل
         input_data = pd.DataFrame([{
             'Gender': gender,
             'Major': major,
@@ -64,14 +65,17 @@ else:
         for col in ['Gender', 'Major', 'Year_of_Study']:
             if col in encoders:
                 le = encoders[col]
-                # التعامل مع القيم غير الموجودة احتياطياً
                 input_data[col] = input_data[col].map(lambda s: le.transform([s])[0] if s in le.classes_ else 0)
         
+        # 🎯 خطوة الإصلاح السحرية: إعادة ترتيب الأعمدة لتطابق الموديل بالظبط
+        if feature_cols is not None:
+            # إعادة ترتيب وتصفية الأعمدة بناءً على الملف المحفوظ
+            input_data = input_data[feature_cols]
+            
         # زر الحساب والتوقع
         if st.button("احسب التوقعات والنصائح الاستشارية", type="primary"):
             # 1. توقع المعدل التراكمي
             pred_gpa = gpa_model.predict(input_data)[0]
-            # التأكد من منطقية الـ GPA بين 0 و 4.0
             pred_gpa = max(0.0, min(4.0, pred_gpa))
             
             # 2. توقع الاحتراق النفسي
@@ -89,10 +93,9 @@ else:
                 
             st.write("---")
             
-            # 💡 الجزء المطور: نظام التوصية والخطط الذكية (الأفكار الجديدة)
+            # 💡 نظام التوصية والخطط الذكية
             st.subheader("🎯 الخطة الاستشارية المقترحة لك (AI Recommendation)")
             
-            # هندسة عكسية لمحاكاة نظام الـ Optimization
             if pred_gpa < 3.0:
                 st.warning(f"⚠️ **لرفع معدلك التراكمي من {pred_gpa:.2f} إلى +3.5:**")
                 st.write(f"• نقترح زيادة ساعات المذاكرة التقليدية من **{stud_hours}** ساعة إلى **{stud_hours + 5}** ساعات أسبوعياً.")
@@ -100,14 +103,14 @@ else:
                     st.write(f"• احذر! نسبة حضورك الحالية ({attendance}%) منخفضة. يجب رفعها فوق **85%** لتجنب خسارة أعمال السنة.")
             else:
                 st.info("🌟 **للحفاظ على تفوقك الدراسي:**")
-                st.write("• استمر على هذا المعدل من الحضور والمذاكرة، وتجنب الاعتماد الكلي على الذكاء الاصطناعي في حل التكليفات بدون فهم.")
+                st.write("• استمر على هذا معدل من الحضور والمذاكرة، وتجنب الاعتماد الكلي على الذكاء الاصطناعي في حل التكليفات بدون فهم.")
 
             if has_burnout or stress_level > 7 or sleep_hours < 6:
                 st.markdown("#### 🧘 روتين مقترح لتقليل التوتر الحاد:")
                 st.write(f"• تم رصد معدل نوم منخفض ({sleep_hours} ساعات). جدولك الجديد يلزمك بزيادة النوم إلى **7 ساعات ونصف** فوراً.")
-                st.write(f"• قلل ساعات استخدام الـ AI من **{ai_hours}** ساعات إلى **{max(0, ai_hours-3)}** ساعات لتعتمد على التفكير النقدي وتستعيد ثقتك الدراسية.")
+                st.write(f"• قلل ساعات استخدام الـ AI من **{ai_hours}** ساعات إلى **{max(0, ai_hours-3)}** ساعات لتستعيد ثقتك الدراسية وعافيتك النفسية.")
 
-            # 🛠️ جزء الـ Habit Tracker التفاعلي (المحاكاة الكاملة للفكرة)
+            # 🛠️ جزء الـ Habit Tracker التفاعلي
             st.write("---")
             st.subheader("📅 الـ Habit Tracker اليومي المتكامل (حالة تجريبية)")
             st.info("💡 هكذا سيتابع الطالب خطته يومياً لضمان الوصول للـ GPA المستهدف وتجنب الـ Burnout:")
